@@ -1,0 +1,20 @@
+{
+  "name": "keyflow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@tonejs/midi": "^2.0.28",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.1"
+  }
+}
