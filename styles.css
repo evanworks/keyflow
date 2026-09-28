@@ -43,6 +43,9 @@
 .note {
     position: absolute;
     height: 100px;
-    background: purple;
+    background: black;
     z-index: -100;
+}
+#notes {
+    z-index: -1000;
 }

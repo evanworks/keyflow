@@ -12,7 +12,8 @@
   "type": "commonjs",
   "dependencies": {
     "@tonejs/midi": "^2.0.28",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "tone": "^15.1.22"
   },
   "devDependencies": {
     "vite": "^8.3.1"
