@@ -44,31 +44,26 @@ let keyElements = new Map();
 // PIANO GENERATION
 // --------------------------------------------------
 
+
 function createPiano() {
   piano.replaceChildren();
   keyElements.clear();
 
-  // Seven octaves: MIDI notes 36 through 119.
   for (let octaveNumber = 2; octaveNumber <= 8; octaveNumber++) {
     const octave = document.createElement("div");
+    octave.classList.add("octave");
     octave.dataset.octave = octaveNumber;
 
+    // Create the 7 white keys first.
     for (let i = 0; i < noteNames.length; i++) {
       const name = noteNames[i];
+
+      if (blackNotes.has(name)) continue;
+
       const midiNumber = (octaveNumber + 1) * 12 + i;
-
       const key = document.createElement("div");
-      key.classList.add("key");
 
-      if (blackNotes.has(name)) {
-        key.classList.add("black");
-      }
-
-      // Add the outline to white keys, not black keys.
-      if (!blackNotes.has(name)) {
-        key.classList.add("outline-key");
-      }
-
+      key.classList.add("key", "white");
       key.dataset.note = name;
       key.dataset.octave = octaveNumber;
       key.dataset.midi = midiNumber;
@@ -77,9 +72,35 @@ function createPiano() {
       keyElements.set(midiNumber, key);
     }
 
+    // Position black keys over the gaps between white keys.
+    const blackKeyPositions = {
+      "C#": 1,
+      "D#": 2,
+      "F#": 4,
+      "G#": 5,
+      "A#": 6
+    };
+
+    for (const [name, whiteKeyIndex] of Object.entries(blackKeyPositions)) {
+      const noteIndex = noteNames.indexOf(name);
+      const midiNumber = (octaveNumber + 1) * 12 + noteIndex;
+      const key = document.createElement("div");
+
+      key.classList.add("key", "black");
+      key.dataset.note = name;
+      key.dataset.octave = octaveNumber;
+      key.dataset.midi = midiNumber;
+
+      key.style.left = `${(whiteKeyIndex / 7) * 100}%`;
+
+      octave.appendChild(key);
+      keyElements.set(midiNumber, key);
+    }
+
     piano.appendChild(octave);
   }
 }
+
 
 createPiano();
 
@@ -249,9 +270,12 @@ function createNote(note, areaHeight) {
     (note.time * PIXELS_PER_SECOND) -
     height;
 
-  element.style.left = `${key.offsetLeft + key.parentElement.offsetLeft}px`;
+  const keyRect = key.getBoundingClientRect();
+  const pianoRect = noteArea.getBoundingClientRect();
+
+  element.style.left = `${keyRect.left - pianoRect.left}px`;
+  element.style.width = `${keyRect.width}px`;
   element.style.top = `${top}px`;
-  element.style.width = `${key.getBoundingClientRect().width}px`;
   element.style.height = `${height}px`;
   element.style.backgroundColor = note.color;
 

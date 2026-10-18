@@ -10,43 +10,6 @@
     z-index: 1;
 }
 
-[data-octave] {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    display: flex;
-    position: relative;
-}
-
-/* White keys */
-.key {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    background: white;
-    position: relative;
-    border: none;
-    border-top: 2px solid black;
-    border-right: 1px solid black;
-    box-sizing: border-box;
-    z-index: 1;
-}
-
-/* Left border for the first white key */
-.outline-key {
-    border-left: 1px solid black;
-}
-
-/* Black keys */
-.key.black {
-    position: relative;
-    height: 60%;
-    background: black;
-    z-index: 2;
-    border: none;
-    outline: none;
-}
-
 /* Falling notes */
 #notes {
     position: fixed;
@@ -61,17 +24,70 @@
 .note {
     position: absolute;
     height: 100px;
-    border-radius: 3px;
     z-index: 0;
     pointer-events: auto;
     will-change: transform;
 }
 
-/* Highlight pressed keys */
-.key.active {
+.key.white.active {
+    background: #c0c0c0;
+}
+.key.white:active {
     background: #c0c0c0;
 }
 
 .key.black.active {
     background: #5f5f5f;
+}
+.key.black:active {
+    background: #5f5f5f;
+}
+
+#piano {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 150px;
+    display: flex;
+    background: white;
+    z-index: 1;
+}
+
+.octave {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    position: relative;
+    margin-right: -1px;
+}
+
+.key.white {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    background: white;
+    position: relative;
+    box-sizing: border-box;
+    border-top: 2px solid black;
+    border-right: 1px solid black;
+    z-index: 1;
+}
+
+.key.black {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    width: 8.5714%;
+    height: 60%;
+    padding: 0;
+    background: black;
+    border: none;
+    box-sizing: border-box;
+    z-index: 2;
+}
+
+.key.white:first-child {
+    border-left: 1px solid black;
 }
