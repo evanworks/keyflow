@@ -5,12 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <title>keyflow</title>
-  <script type="module" crossorigin src="/keyflow/assets/index-wcH2W7o8.js"></script>
-  <link rel="stylesheet" crossorigin href="/keyflow/assets/index-CHzerQii.css">
+  <script type="module" crossorigin src="/keyflow/assets/index-BU5qLCSe.js"></script>
+  <link rel="stylesheet" crossorigin href="/keyflow/assets/index-DpTQ0d1Q.css">
 </head>
 <body>
-    <input type="file" accept=".mid,.midi" id="midi-select"><button id="play">Play</button><div id="ticks"></div>
-
+    <div id="ui">
+   <div id="progress-container">
+        <input id="progress" type="range" min="0" max="100" value="0" step="0.1">
+        <span id="progress-time">0:00 / 0:00</span>
+    </div>
+    <input type="checkbox" id="pmode">Film mode <input type="file" accept=".mid,.midi" id="midi-select"><button id="play">▶</button><button id="export-video" disabled>Export</button> video</button><div id="ticks"></div>
+    </div>
     <div id="piano"></div>
     <div id="notes"></div>
 </body>

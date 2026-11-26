@@ -1,4 +1,3 @@
-
 import { Midi } from "@tonejs/midi";
 
 const midiSelect = document.getElementById("midi-select");
@@ -16,15 +15,14 @@ const blackNotes = new Set(["C#", "D#", "F#", "G#", "A#"]);
 
 const TRACK_COLORS = [
   "deepskyblue",
-  "crimson",
-  "darkorchid",
-  "lawngreen",
-  "orange",
-  "dodgerblue"
+  "lime",
+  "deepskyblue",
+  "deepskyblue",
+  "deepskyblue",
+  "crimson"
 ];
 
 // Visual speed in pixels per second.
-// 200px/s is approximately your original speed at 100 BPM.
 const PIXELS_PER_SECOND = 200;
 const PIANO_HEIGHT = 150;
 
@@ -37,19 +35,28 @@ let playbackStart = 0;
 let isPlaying = false;
 let scheduledNotes = [];
 let visualNotes = [];
+let allNotes = [];
+let nextNoteIndex = 0;
 let activeKeys = new Map();
 let keyElements = new Map();
+let keyPositions = new Map();
+let noteAreaHeight = 0;
+let songEnd = 0;
+
+const progress = document.getElementById("progress");
+const progressTime = document.getElementById("progress-time");
+
+let songDuration = 0;
 
 // --------------------------------------------------
 // PIANO GENERATION
 // --------------------------------------------------
 
-
 function createPiano() {
   piano.replaceChildren();
   keyElements.clear();
 
-  for (let octaveNumber = 2; octaveNumber <= 8; octaveNumber++) {
+  for (let octaveNumber = 1; octaveNumber <= 7; octaveNumber++) {
     const octave = document.createElement("div");
     octave.classList.add("octave");
     octave.dataset.octave = octaveNumber;
@@ -101,7 +108,6 @@ function createPiano() {
   }
 }
 
-
 createPiano();
 
 // --------------------------------------------------
@@ -130,6 +136,16 @@ async function loadMidi() {
     }
 
     midi = loadedMidi;
+    songDuration = Math.max(
+      ...midi.tracks.flatMap(track =>
+        track.notes.map(note => note.time + note.duration)
+      )
+    );
+
+    progress.value = 0;
+    progress.max = songDuration || 1;
+    progress.style.setProperty("--progress", "0%");
+    progressTime.textContent = `0:00 / ${formatTime(songDuration)}`;
 
     playButton.disabled = false;
 
@@ -150,6 +166,10 @@ playButton.addEventListener("click", async () => {
 
   try {
     playButton.disabled = true;
+    if (document.getElementById("pmode").checked) {
+      document.getElementById("ui").style.display = "none";
+      document.body.style.cursor = "none";
+    }
 
     if (!Tone) {
       Tone = await import("tone");
@@ -192,13 +212,26 @@ function startPlayback() {
   noteArea.replaceChildren();
   visualNotes = [];
   scheduledNotes = [];
+  allNotes = [];
+  nextNoteIndex = 0;
+  keyPositions.clear();
 
-  const areaHeight = Math.max(
+  // Read layout once per playback, not once for every MIDI note.
+  noteAreaHeight = Math.max(
     0,
     noteArea.clientHeight || window.innerHeight - PIANO_HEIGHT
   );
 
-  const allNotes = [];
+  const noteAreaRect = noteArea.getBoundingClientRect();
+
+  for (const [midiNumber, key] of keyElements) {
+    const rect = key.getBoundingClientRect();
+
+    keyPositions.set(midiNumber, {
+      left: rect.left - noteAreaRect.left,
+      width: rect.width
+    });
+  }
 
   for (let trackIndex = 0; trackIndex < midi.tracks.length; trackIndex++) {
     const track = midi.tracks[trackIndex];
@@ -222,9 +255,10 @@ function startPlayback() {
   playbackStart = startAt;
   isPlaying = true;
 
-  // Schedule audio against the audio clock, not animation frames.
-  // note.time and note.duration are already expressed in seconds
-  // by @tonejs/midi, including tempo changes in the MIDI file.
+  songEnd = 0;
+
+  // Schedule audio separately from the visual animation.
+  // MIDI note times and durations are already in seconds.
   for (const note of allNotes) {
     const startTime = startAt + note.time;
     const endTime = startTime + Math.max(0.01, note.duration);
@@ -233,13 +267,8 @@ function startPlayback() {
     synth.triggerAttack(frequency, startTime);
     synth.triggerRelease(frequency, endTime);
 
-    scheduledNotes.push({
-      ...note,
-      startTime,
-      endTime
-    });
-
-    createNote(note, areaHeight);
+    scheduledNotes.push({ ...note, startTime, endTime });
+    songEnd = Math.max(songEnd, note.time + Math.max(0.01, note.duration));
   }
 
   update();
@@ -249,32 +278,28 @@ function startPlayback() {
 // FALLING NOTE VISUALS
 // --------------------------------------------------
 
-function createNote(note, areaHeight) {
-  const key = keyElements.get(note.midi);
+// Create a note only when it is close enough to enter the visible area.
+function createNote(note) {
+  const position = keyPositions.get(note.midi);
 
   // Don't render notes outside the generated piano range.
-  if (!key) return;
+  if (!position) return;
 
   const element = document.createElement("div");
   element.classList.add("note");
 
   const height = Math.max(
-    4,
+    6,
     note.duration * PIXELS_PER_SECOND
-  );
+  ) - 2;
 
-  // At the scheduled onset, the bottom of the note reaches
-  // the bottom of the note area, directly above the piano.
   const top =
-    areaHeight -
+    noteAreaHeight -
     (note.time * PIXELS_PER_SECOND) -
     height;
-
-  const keyRect = key.getBoundingClientRect();
-  const pianoRect = noteArea.getBoundingClientRect();
-
-  element.style.left = `${keyRect.left - pianoRect.left}px`;
-  element.style.width = `${keyRect.width}px`;
+  element.style.setProperty("--note-color", note.color);
+  element.style.left = `${position.left}px`;
+  element.style.width = `${position.width}px`;
   element.style.top = `${top}px`;
   element.style.height = `${height}px`;
   element.style.backgroundColor = note.color;
@@ -286,7 +311,9 @@ function createNote(note, areaHeight) {
     midi: note.midi,
     time: note.time,
     duration: note.duration,
-    endTime: note.time + note.duration
+    endTime: note.time + note.duration,
+    baseTop: top,
+    active: false
   });
 }
 
@@ -297,19 +324,41 @@ function createNote(note, areaHeight) {
 function update() {
   if (!isPlaying || !Tone) return;
 
-  // Use the same audio clock that schedules the sound.
   const elapsed = Math.max(
     0,
     Tone.getContext().currentTime - playbackStart
   );
 
-  for (const note of visualNotes) {
-    const top =
-      noteArea.clientHeight -
-      (note.time + note.duration) * PIXELS_PER_SECOND +
-      elapsed * PIXELS_PER_SECOND;
+  progress.value = Math.min(elapsed, songDuration);
+  progress.style.setProperty(
+    "--progress",
+    `${(progress.value / (songDuration || 1)) * 100}%`
+  );
+  progressTime.textContent =
+    `${formatTime(elapsed)} / ${formatTime(songDuration)}`;
 
-    note.element.style.transform = `translateY(${top - parseFloat(note.element.style.top)}px)`;
+  // Add notes only when they are about to enter the visible note area.
+  const earliestVisibleNoteTime =
+    elapsed - noteAreaHeight / PIXELS_PER_SECOND;
+
+  while (
+    nextNoteIndex < allNotes.length &&
+    allNotes[nextNoteIndex].time <=
+      earliestVisibleNoteTime + noteAreaHeight / PIXELS_PER_SECOND * 2
+  ) {
+    const note = allNotes[nextNoteIndex];
+    nextNoteIndex++;
+
+    // Ignore notes that have already ended (for example after a delayed frame).
+    if (elapsed >= note.time + note.duration) continue;
+
+    createNote(note);
+  }
+
+  for (const note of visualNotes) {
+    // Moving notes with transform avoids repeatedly changing layout positions.
+    note.element.style.transform =
+      `translateY(${elapsed * PIXELS_PER_SECOND - 2}px)`;
 
     const shouldBeActive =
       elapsed >= note.time && elapsed < note.endTime;
@@ -320,22 +369,27 @@ function update() {
     }
   }
 
-  // Remove notes only after their complete duration has passed.
-  visualNotes = visualNotes.filter(note => {
-    if (elapsed >= note.endTime) {
-      note.element.remove();
-      return false;
-    }
+  // Remove ended notes without rebuilding the whole array each frame.
+  let writeIndex = 0;
 
-    return true;
-  });
+  for (let i = 0; i < visualNotes.length; i++) {
+    const note = visualNotes[i];
+
+    if (elapsed >= note.endTime) {
+      if (note.active) {
+        changeKeyActivity(note.midi, false);
+      }
+
+      note.element.remove();
+    } else {
+      visualNotes[writeIndex] = note;
+      writeIndex++;
+    }
+  }
+
+  visualNotes.length = writeIndex;
 
   ticksDisplay.textContent = `${elapsed.toFixed(2)}s`;
-
-  const songEnd = Math.max(
-    0,
-    ...scheduledNotes.map(note => note.endTime - playbackStart)
-  );
 
   if (elapsed >= songEnd && visualNotes.length === 0) {
     stopPlayback();
@@ -344,6 +398,14 @@ function update() {
   }
 
   animationFrame = requestAnimationFrame(update);
+}
+
+function formatTime(seconds) {
+  const totalSeconds = Math.floor(seconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 // Track overlapping notes on the same key so one note ending
@@ -381,7 +443,6 @@ function stopPlayback() {
     animationFrame = null;
   }
 
-  // Stop any remaining sound and scheduled events.
   if (synth && Tone) {
     synth.releaseAll();
   }
@@ -392,7 +453,10 @@ function stopPlayback() {
 
   visualNotes = [];
   scheduledNotes = [];
+  allNotes = [];
+  nextNoteIndex = 0;
   activeKeys.clear();
+  keyPositions.clear();
 
   for (const key of keyElements.values()) {
     key.classList.remove("active");
